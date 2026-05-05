@@ -4,26 +4,41 @@ import { useState, useEffect } from 'react';
 import { getItineraryOfTheDay, Trip } from '@/lib/itinerary'; 
 import { 
   Download, Wallet, Utensils, Bed, 
-  CloudSun, Navigation, Minus, Plus 
+  CloudSun, Navigation, Minus, Plus,
+  Bookmark, Share2, MapPin, Coffee, Moon
 } from 'lucide-react';
 
-// --- 1. SOTTO-COMPONENTI MODULARI ---
+// --- 1. SOTTO-COMPONENTI MODULARI (UI Premium) ---
 
 const HeroSection = ({ trip }: { trip: Trip }) => (
-  <div className="h-[55vh] relative bg-cover bg-center flex items-end pb-12 px-8 print:h-48" 
+  <div className="h-[60vh] min-h-[400px] relative bg-cover bg-center flex items-end pb-16 px-8 print:h-48" 
        style={{ backgroundImage: `url(${trip.immagine})` }}>
-    <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-[#0f172a]/20 to-transparent print:hidden" />
-    <div className="relative z-10 text-white max-w-6xl mx-auto w-full flex justify-between items-end">
-      <div className="max-w-2xl">
-        <h1 className="text-4xl md:text-6xl font-bold mb-4 tracking-tighter drop-shadow-xl">{trip.titolo}</h1>
-        <span className="bg-[#ea580c] px-4 py-1 rounded-full font-bold text-xs flex items-center gap-2 w-fit">
-          <CloudSun className="w-4 h-4"/> {trip.periodoMigliore}
+    {/* Gradiente più profondo per far risaltare i testi */}
+    <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-[#0f172a]/40 to-transparent print:hidden" />
+    
+    <div className="relative z-10 max-w-7xl mx-auto w-full flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+      <div className="max-w-3xl">
+        <span className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md border border-white/20 px-4 py-2 rounded-full font-semibold text-sm text-white mb-6 shadow-lg">
+          <CloudSun className="w-4 h-4 text-orange-300"/> {trip.periodoMigliore}
         </span>
+        <h1 className="text-5xl md:text-7xl font-extrabold text-white mb-4 tracking-tight drop-shadow-2xl">
+          {trip.titolo}
+        </h1>
       </div>
-      <button onClick={() => window.print()} 
-              className="print:hidden bg-white text-[#0f172a] px-6 py-3 rounded-full flex items-center gap-2 font-bold hover:bg-[#ea580c] hover:text-white transition-all shadow-2xl shrink-0">
-        <Download className="w-5 h-5" /> Esporta PDF
-      </button>
+      
+      {/* Gruppo di CTA Premium */}
+      <div className="flex items-center gap-3 print:hidden">
+        <button className="bg-white/10 backdrop-blur-md border border-white/20 text-white p-4 rounded-full hover:bg-white/20 hover:scale-105 transition-all shadow-xl">
+          <Bookmark className="w-5 h-5" />
+        </button>
+        <button className="bg-white/10 backdrop-blur-md border border-white/20 text-white p-4 rounded-full hover:bg-white/20 hover:scale-105 transition-all shadow-xl">
+          <Share2 className="w-5 h-5" />
+        </button>
+        <button onClick={() => window.print()} 
+                className="bg-[#ea580c] text-white px-8 py-4 rounded-full flex items-center gap-3 font-bold hover:bg-orange-500 hover:shadow-[0_0_30px_rgba(234,88,12,0.5)] transition-all shrink-0">
+          <Download className="w-5 h-5" /> Esporta PDF
+        </button>
+      </div>
     </div>
   </div>
 );
@@ -34,51 +49,72 @@ const Sidebar = ({ trip, travelers, setTravelers }: { trip: Trip, travelers: num
   const totale = calcola(b.trasporto.costo + b.cibo.costo + b.attivita.costo) + b.alloggio.costo;
 
   return (
-    <div className="lg:col-span-4 space-y-8">
+    // Aggiunto "sticky top-8" per far scivolare la colonna insieme allo scroll
+    <div className="lg:col-span-4 space-y-8 sticky top-8 print:static">
+      
       {/* Box Logistica */}
-      <div className="bg-[#0f172a] text-white p-8 rounded-3xl shadow-2xl">
-        <h3 className="font-bold text-xl mb-6 flex items-center gap-2 border-b border-white/10 pb-4 text-[#ea580c]">
-          <Navigation /> Logistica
+      <div className="bg-[#0f172a] text-white p-8 rounded-[2rem] shadow-2xl border border-gray-800 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl -mr-10 -mt-10" />
+        <h3 className="font-bold text-xl mb-6 flex items-center gap-3 border-b border-white/10 pb-5 text-white">
+          <span className="bg-[#ea580c] p-2 rounded-xl"><Navigation className="w-5 h-5 text-white" /></span>
+          Logistica
         </h3>
-        <div className="space-y-4 text-sm">
-          <div><p className="text-gray-400 text-[10px] font-bold uppercase mb-1">Partenza</p><p>{trip.logistica.partenza}</p></div>
-          <div><p className="text-gray-400 text-[10px] font-bold uppercase mb-1">Parcheggio</p><p>{trip.logistica.parcheggio}</p></div>
+        <div className="space-y-6 text-sm">
+          <div>
+            <p className="text-gray-400 text-[11px] font-bold uppercase tracking-widest mb-2 flex items-center gap-2"><MapPin className="w-3 h-3"/> Partenza</p>
+            <p className="text-gray-100 font-medium text-base">{trip.logistica.partenza}</p>
+          </div>
+          <div>
+            <p className="text-gray-400 text-[11px] font-bold uppercase tracking-widest mb-2">Parcheggio</p>
+            <p className="text-gray-100 font-medium text-base">{trip.logistica.parcheggio}</p>
+          </div>
         </div>
       </div>
 
       {/* Box Budget */}
-      <div className="bg-white p-8 rounded-3xl shadow-xl border border-gray-100">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="font-bold text-xl flex items-center gap-2 text-[#0f172a]"><Wallet className="text-[#ea580c]"/> Budget</h3>
-          <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-full print:hidden">
-            <button onClick={() => setTravelers(Math.max(1, travelers - 1))} className="w-7 h-7 rounded-full bg-white flex items-center justify-center shadow-sm"><Minus size={14}/></button>
-            <span className="text-xs font-bold w-4 text-center">{travelers}</span>
-            <button onClick={() => setTravelers(travelers + 1)} className="w-7 h-7 rounded-full bg-[#0f172a] text-white flex items-center justify-center shadow-sm"><Plus size={14}/></button>
+      <div className="bg-white p-8 rounded-[2rem] shadow-xl shadow-gray-200/50 border border-gray-100">
+        <div className="flex justify-between items-center mb-8">
+          <h3 className="font-bold text-xl flex items-center gap-3 text-[#0f172a]">
+            <span className="bg-orange-50 p-2 rounded-xl"><Wallet className="text-[#ea580c] w-5 h-5"/></span>
+            Budget
+          </h3>
+          <div className="flex items-center gap-3 bg-gray-50 p-1.5 rounded-full border border-gray-100 print:hidden">
+            <button onClick={() => setTravelers(Math.max(1, travelers - 1))} className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm hover:bg-gray-100 transition-colors"><Minus size={14} className="text-gray-600"/></button>
+            <span className="text-sm font-bold w-6 text-center text-[#0f172a]">{travelers}</span>
+            <button onClick={() => setTravelers(travelers + 1)} className="w-8 h-8 rounded-full bg-[#0f172a] text-white flex items-center justify-center shadow-sm hover:bg-gray-800 transition-colors"><Plus size={14}/></button>
           </div>
         </div>
-        <div className="space-y-4 border-b pb-6 mb-6">
+        
+        <div className="space-y-5 border-b border-gray-100 pb-8 mb-8">
           {[
             { label: 'Trasporto', val: calcola(b.trasporto.costo), desc: b.trasporto.dettaglio },
             { label: 'Alloggio', val: b.alloggio.costo, desc: b.alloggio.dettaglio },
             { label: 'Cibo', val: calcola(b.cibo.costo), desc: b.cibo.dettaglio },
             { label: 'Attività', val: calcola(b.attivita.costo), desc: b.attivita.dettaglio },
           ].map((item, i) => (
-            <div key={i} className="flex flex-col">
-              <div className="flex justify-between font-bold text-sm"><span>{item.label}</span><span className="text-[#ea580c]">€ {item.val}</span></div>
-              <span className="text-[11px] text-gray-500 leading-tight">{item.desc}</span>
+             <div key={i} className="flex flex-col group">
+              <div className="flex justify-between items-end font-bold text-sm mb-1">
+                <span className="text-gray-600 group-hover:text-[#0f172a] transition-colors">{item.label}</span>
+                <span className="text-[#ea580c] font-black text-base">€ {item.val}</span>
+              </div>
+              <span className="text-xs text-gray-400 font-medium leading-tight">{item.desc}</span>
             </div>
           ))}
         </div>
-        <div className="flex justify-between items-center">
-          <span className="text-xs text-gray-400 font-bold uppercase">Totale x {travelers}</span>
-          <span className="text-3xl font-bold text-[#0f172a]">€ {totale}</span>
+        
+        <div className="flex justify-between items-end">
+          <div className="flex flex-col">
+            <span className="text-xs text-gray-400 font-bold uppercase tracking-widest mb-1">Totale stimato</span>
+            <span className="text-sm text-gray-500 font-medium">Per {travelers} {travelers === 1 ? 'viaggiatore' : 'viaggiatori'}</span>
+          </div>
+          <span className="text-4xl font-black text-[#0f172a] tracking-tight">€ {totale}</span>
         </div>
       </div>
     </div>
   );
 };
 
-// Il nostro nuovo componente riutilizzabile e pulito
+// --- Componente ItineraryDay Rifinito ---
 interface ItineraryDayProps {
   giorno: number;
   mattina: string;
@@ -88,19 +124,43 @@ interface ItineraryDayProps {
 }
 
 const ItineraryDay = ({ giorno, mattina, pranzo, pomeriggio, sera }: ItineraryDayProps) => (
-  <div className="relative pl-10 border-l-2 border-[#ea580c]/20 pb-12 last:pb-0">
-    <div className="absolute w-8 h-8 bg-[#0f172a] rounded-full -left-[17px] top-0 flex items-center justify-center text-white font-bold text-sm shadow-lg">
+  // Linea della timeline più elegante
+  <div className="relative pl-12 md:pl-16 border-l-[3px] border-orange-100 pb-16 last:pb-0">
+    {/* Bollo del giorno con gradiente */}
+    <div className="absolute w-12 h-12 bg-gradient-to-br from-[#ea580c] to-orange-400 rounded-full -left-[25.5px] top-0 flex items-center justify-center text-white font-black text-lg shadow-[0_0_20px_rgba(234,88,12,0.3)] ring-4 ring-white">
       {giorno}
     </div>
-    <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-50 space-y-4">
-      <p><strong className="text-[#0f172a] text-[10px] uppercase block tracking-widest mb-1">Mattina</strong> {mattina}</p>
-      <div className="bg-orange-50/50 p-4 rounded-2xl border border-orange-100">
-        <p><strong className="text-[#ea580c] text-[10px] uppercase block tracking-widest mb-1">Sosta Gourmet</strong> {pranzo}</p>
+    
+    <div className="bg-white p-8 rounded-[2rem] shadow-xl shadow-gray-200/40 border border-gray-100 space-y-8 transition-transform hover:-translate-y-1 duration-300">
+      
+      <div>
+        <p className="flex items-center gap-2 text-gray-400 text-[11px] font-bold uppercase tracking-widest mb-3">
+          <Coffee className="w-4 h-4 text-gray-400" /> Mattina
+        </p>
+        <p className="text-[#0f172a] text-lg font-medium leading-relaxed">{mattina}</p>
       </div>
-      <p><strong className="text-[#0f172a] text-[10px] uppercase block tracking-widest mb-1">Pomeriggio</strong> {pomeriggio}</p>
-      <div className="bg-[#0f172a] p-5 rounded-2xl text-white shadow-xl">
-        <p><strong className="text-[#ea580c] text-[10px] uppercase block tracking-widest mb-1">L'Anima del luogo (Sera)</strong> {sera}</p>
+
+      <div className="bg-orange-50 p-6 rounded-2xl border border-orange-100/50">
+        <p className="flex items-center gap-2 text-[#ea580c] text-[11px] font-bold uppercase tracking-widest mb-2">
+          <Utensils className="w-4 h-4" /> Sosta Pranzo
+        </p>
+        <p className="text-[#0f172a] font-medium">{pranzo}</p>
       </div>
+
+      <div>
+        <p className="flex items-center gap-2 text-gray-400 text-[11px] font-bold uppercase tracking-widest mb-3">
+          <MapPin className="w-4 h-4 text-gray-400" /> Pomeriggio
+        </p>
+        <p className="text-[#0f172a] text-lg font-medium leading-relaxed">{pomeriggio}</p>
+      </div>
+
+      <div className="bg-gradient-to-br from-[#0f172a] to-gray-800 p-6 rounded-2xl text-white shadow-lg">
+        <p className="flex items-center gap-2 text-orange-400 text-[11px] font-bold uppercase tracking-widest mb-2">
+          <Moon className="w-4 h-4" /> L'Anima del luogo (Sera)
+        </p>
+        <p className="font-medium leading-relaxed">{sera}</p>
+      </div>
+      
     </div>
   </div>
 );
@@ -116,56 +176,71 @@ export default function ItineraryPage() {
   }, []);
 
   if (!trip) return (
-    <div className="min-h-screen flex items-center justify-center font-bold text-xl text-[#0f172a]">
-      Caricamento itinerario...
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-[#f8fafc]">
+      <div className="w-12 h-12 border-4 border-orange-200 border-t-[#ea580c] rounded-full animate-spin" />
+      <span className="font-bold text-gray-500 uppercase tracking-widest text-sm">Creazione Loop in corso...</span>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] pb-20 print:bg-white print:pb-0">
+    <div className="min-h-screen bg-[#f8fafc] pb-24 print:bg-white print:pb-0 selection:bg-[#ea580c] selection:text-white font-sans">
       <HeroSection trip={trip} />
 
-      <main className="max-w-6xl mx-auto px-6 py-12 grid grid-cols-1 lg:grid-cols-12 gap-12 print:block">
+      <main className="max-w-7xl mx-auto px-6 py-16 grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 print:block">
         <Sidebar trip={trip} travelers={travelers} setTravelers={setTravelers} />
 
-        <div className="lg:col-span-8 space-y-12">
+        <div className="lg:col-span-8 space-y-16">
           
           <section>
-            <h2 className="text-3xl font-bold text-[#0f172a] mb-8 italic">Il Tuo Programma</h2>
-            {/* Integrazione elegante del componente */}
-            {trip.giorni.map((g, idx) => (
-              <ItineraryDay 
-                key={idx}
-                giorno={g.giorno}
-                mattina={g.mattina}
-                pranzo={g.pranzo}
-                pomeriggio={g.pomeriggio}
-                sera={g.sera}
-              />
-            ))}
-          </section>
-
-          <section className="grid md:grid-cols-2 gap-6">
-            <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
-              <h3 className="font-bold text-[#0f172a] mb-6 flex items-center gap-2"><Utensils className="text-[#ea580c]"/> Gastronomia</h3>
-              {trip.mangiare.map((m, i) => (
-                <div key={i} className="mb-4 last:mb-0 border-l-2 border-gray-100 pl-4">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{m.tipo}</p>
-                  <p className="font-bold text-[#0f172a]">{m.nome}</p>
-                  <p className="text-sm text-[#ea580c] italic">{m.piatto}</p>
-                </div>
+            <h2 className="text-4xl font-extrabold text-[#0f172a] mb-12 tracking-tight">Il Tuo Programma</h2>
+            <div className="mt-8 pt-4">
+              {trip.giorni.map((g, idx) => (
+                <ItineraryDay 
+                  key={idx}
+                  giorno={g.giorno}
+                  mattina={g.mattina}
+                  pranzo={g.pranzo}
+                  pomeriggio={g.pomeriggio}
+                  sera={g.sera}
+                />
               ))}
             </div>
+          </section>
+
+          <section className="grid md:grid-cols-2 gap-8">
+            <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-xl shadow-gray-200/40">
+              <h3 className="font-bold text-2xl text-[#0f172a] mb-8 flex items-center gap-3">
+                <span className="bg-orange-50 p-2 rounded-xl"><Utensils className="text-[#ea580c] w-6 h-6"/></span>
+                Gastronomia
+              </h3>
+              <div className="space-y-6">
+                {trip.mangiare.map((m, i) => (
+                  <div key={i} className="group border-l-[3px] border-orange-100 pl-5 py-1 hover:border-[#ea580c] transition-colors">
+                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">{m.tipo}</p>
+                    <p className="font-bold text-lg text-[#0f172a] mb-1">{m.nome}</p>
+                    <p className="text-sm text-gray-500 font-medium">{m.piatto}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
             
-            <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
-              <h3 className="font-bold text-[#0f172a] mb-6 flex items-center gap-2"><Bed className="text-[#ea580c]"/> Dove Dormire</h3>
-              {trip.alloggi.map((h, i) => (
-                <div key={i} className="mb-4 last:mb-0 border-l-2 border-gray-100 pl-4">
-                  <div className="flex justify-between items-start"><p className="font-bold text-[#0f172a]">{h.nome}</p><span className="text-[#ea580c] font-black text-[10px]">{h.fascia}</span></div>
-                  <p className="text-[10px] text-gray-400 uppercase mb-1">{h.tipo}</p>
-                  <p className="text-[11px] text-green-700 font-medium font-serif italic">“{h.pro}”</p>
-                </div>
-              ))}
+            <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-xl shadow-gray-200/40">
+              <h3 className="font-bold text-2xl text-[#0f172a] mb-8 flex items-center gap-3">
+                <span className="bg-orange-50 p-2 rounded-xl"><Bed className="text-[#ea580c] w-6 h-6"/></span>
+                Dove Dormire
+              </h3>
+              <div className="space-y-6">
+                {trip.alloggi.map((h, i) => (
+                  <div key={i} className="group border-l-[3px] border-orange-100 pl-5 py-1 hover:border-[#ea580c] transition-colors">
+                    <div className="flex justify-between items-start mb-1">
+                      <p className="font-bold text-lg text-[#0f172a]">{h.nome}</p>
+                      <span className="bg-gray-100 text-[#ea580c] px-2 py-1 rounded-md font-black text-[10px] tracking-widest">{h.fascia}</span>
+                    </div>
+                    <p className="text-[11px] text-gray-400 font-bold uppercase tracking-widest mb-2">{h.tipo}</p>
+                    <p className="text-sm text-gray-500 font-medium italic">“{h.pro}”</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </section>
         </div>
