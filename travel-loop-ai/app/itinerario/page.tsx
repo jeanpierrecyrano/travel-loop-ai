@@ -5,15 +5,13 @@ import { getItineraryOfTheDay, Trip } from '@/lib/itinerary';
 import { 
   Download, Wallet, Utensils, Bed, 
   CloudSun, Navigation, Minus, Plus,
-  Bookmark, Share2, MapPin, Coffee, Moon
+  Bookmark, Share2, MapPin, Coffee, Moon,
+  Ticket // <- Ho aggiunto la nuova icona del biglietto per gli extra!
 } from 'lucide-react';
-
-// --- 1. SOTTO-COMPONENTI MODULARI (UI Premium) ---
 
 const HeroSection = ({ trip }: { trip: Trip }) => (
   <div className="h-[60vh] min-h-[400px] relative bg-cover bg-center flex items-end pb-16 px-8 print:h-48" 
        style={{ backgroundImage: `url(${trip.immagine})` }}>
-    {/* Gradiente più profondo per far risaltare i testi */}
     <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-[#0f172a]/40 to-transparent print:hidden" />
     
     <div className="relative z-10 max-w-7xl mx-auto w-full flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
@@ -26,7 +24,6 @@ const HeroSection = ({ trip }: { trip: Trip }) => (
         </h1>
       </div>
       
-      {/* Gruppo di CTA Premium */}
       <div className="flex items-center gap-3 print:hidden">
         <button className="bg-white/10 backdrop-blur-md border border-white/20 text-white p-4 rounded-full hover:bg-white/20 hover:scale-105 transition-all shadow-xl">
           <Bookmark className="w-5 h-5" />
@@ -49,10 +46,8 @@ const Sidebar = ({ trip, travelers, setTravelers }: { trip: Trip, travelers: num
   const totale = calcola(b.trasporto.costo + b.cibo.costo + b.attivita.costo) + b.alloggio.costo;
 
   return (
-    // Aggiunto "sticky top-8" per far scivolare la colonna insieme allo scroll
-    <div className="lg:col-span-4 space-y-8 sticky top-8 print:static">
+    <div className="lg:col-span-4 space-y-8 sticky top-28 print:static">
       
-      {/* Box Logistica */}
       <div className="bg-[#0f172a] text-white p-8 rounded-[2rem] shadow-2xl border border-gray-800 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl -mr-10 -mt-10" />
         <h3 className="font-bold text-xl mb-6 flex items-center gap-3 border-b border-white/10 pb-5 text-white">
@@ -71,7 +66,6 @@ const Sidebar = ({ trip, travelers, setTravelers }: { trip: Trip, travelers: num
         </div>
       </div>
 
-      {/* Box Budget */}
       <div className="bg-white p-8 rounded-[2rem] shadow-xl shadow-gray-200/50 border border-gray-100">
         <div className="flex justify-between items-center mb-8">
           <h3 className="font-bold text-xl flex items-center gap-3 text-[#0f172a]">
@@ -114,7 +108,6 @@ const Sidebar = ({ trip, travelers, setTravelers }: { trip: Trip, travelers: num
   );
 };
 
-// --- Componente ItineraryDay Rifinito ---
 interface ItineraryDayProps {
   giorno: number;
   mattina: string;
@@ -124,15 +117,12 @@ interface ItineraryDayProps {
 }
 
 const ItineraryDay = ({ giorno, mattina, pranzo, pomeriggio, sera }: ItineraryDayProps) => (
-  // Linea della timeline più elegante
   <div className="relative pl-12 md:pl-16 border-l-[3px] border-orange-100 pb-16 last:pb-0">
-    {/* Bollo del giorno con gradiente */}
     <div className="absolute w-12 h-12 bg-gradient-to-br from-[#ea580c] to-orange-400 rounded-full -left-[25.5px] top-0 flex items-center justify-center text-white font-black text-lg shadow-[0_0_20px_rgba(234,88,12,0.3)] ring-4 ring-white">
       {giorno}
     </div>
     
     <div className="bg-white p-8 rounded-[2rem] shadow-xl shadow-gray-200/40 border border-gray-100 space-y-8 transition-transform hover:-translate-y-1 duration-300">
-      
       <div>
         <p className="flex items-center gap-2 text-gray-400 text-[11px] font-bold uppercase tracking-widest mb-3">
           <Coffee className="w-4 h-4 text-gray-400" /> Mattina
@@ -160,12 +150,9 @@ const ItineraryDay = ({ giorno, mattina, pranzo, pomeriggio, sera }: ItineraryDa
         </p>
         <p className="font-medium leading-relaxed">{sera}</p>
       </div>
-      
     </div>
   </div>
 );
-
-// --- 2. PAGINA PRINCIPALE ---
 
 export default function ItineraryPage() {
   const [trip, setTrip] = useState<Trip | null>(null);
@@ -189,7 +176,7 @@ export default function ItineraryPage() {
       <main className="max-w-7xl mx-auto px-6 py-16 grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 print:block">
         <Sidebar trip={trip} travelers={travelers} setTravelers={setTravelers} />
 
-        <div className="lg:col-span-8 space-y-16">
+        <div className="lg:col-span-8 space-y-12">
           
           <section>
             <h2 className="text-4xl font-extrabold text-[#0f172a] mb-12 tracking-tight">Il Tuo Programma</h2>
@@ -243,6 +230,26 @@ export default function ItineraryPage() {
               </div>
             </div>
           </section>
+
+          {/* ECCO LA NUOVA SEZIONE CHE LEGGE IL DATO "EXTRA" */}
+          <section className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-xl shadow-gray-200/40 mt-8">
+            <h3 className="font-bold text-2xl text-[#0f172a] mb-8 flex items-center gap-3">
+              <span className="bg-orange-50 p-2 rounded-xl"><Ticket className="text-[#ea580c] w-6 h-6"/></span>
+              Esperienze Extra Suggerite
+            </h3>
+            <div className="grid md:grid-cols-2 gap-6">
+              {trip.extra.map((ext, i) => (
+                <div key={i} className="p-6 rounded-2xl border border-gray-100 bg-gray-50/50 hover:border-[#ea580c] hover:bg-white transition-all group">
+                  <div className="flex justify-between items-start mb-3">
+                    <h4 className="font-bold text-[#0f172a] text-lg leading-tight group-hover:text-[#ea580c] transition-colors">{ext.nome}</h4>
+                    <span className="bg-[#0f172a] text-white px-3 py-1 rounded-lg font-black text-sm shrink-0">€ {ext.costo}</span>
+                  </div>
+                  <p className="text-sm text-gray-500 font-medium leading-relaxed">{ext.descrizione}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
         </div>
       </main>
     </div>
