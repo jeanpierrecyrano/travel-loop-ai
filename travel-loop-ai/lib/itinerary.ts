@@ -1,6 +1,5 @@
 // File: /lib/itinerary.ts
 import { destinations } from '../data/destinations';
-import { calcolaCostiViaggio } from './calculator'; 
 
 export interface BudgetDetails { costo: number; dettaglio: string; }
 
@@ -18,20 +17,11 @@ export interface Trip {
   extra: Array<{ nome: string; costo: number; descrizione: string }>;
 }
 
-// 💥 NUOVO: Definiamo l'interfaccia delle preferenze utente
 export interface TripPreferences {
   persone: number;
   budget: 'low' | 'medium' | 'high';
-  tipo: string; // 'qualsiasi', 'relax', 'cultura', 'avventura', 'natura'
-  durata: number; // numero di giorni esatti
-}
-
-function getCurrentSeason(): string {
-  const month = new Date().getMonth(); 
-  if (month >= 2 && month <= 4) return "Primavera";
-  if (month >= 5 && month <= 7) return "Estate";
-  if (month >= 8 && month <= 10) return "Autunno";
-  return "Inverno";
+  tipo: string; 
+  durata: number; 
 }
 
 function generateAccommodations(fasciaPrezzo: number) {
@@ -129,63 +119,90 @@ function generateExtraActivities(tags: string[]) {
 }
 
 function hydrateDestinationToTrip(dest: any, prefs: TripPreferences): Trip {
-  const meseAttuale = new Date().getMonth() + 1; 
-  const calcoloFinanziario = calcolaCostiViaggio({
-    costoMedioDestinazione: dest.costoMedio,
-    durata: prefs.durata,
-    mese: meseAttuale,
-    numeroPersone: prefs.persone,
-    tipoViaggio: dest.tipo,
-    budgetUtente: prefs.budget
-  });
+  const giorni = prefs.durata;
+  const notti = giorni === 1 ? 0 : giorni - 1; // 1 giorno = 0 notti
 
-  const target = calcoloFinanziario.costoTarget;
-  const trasporto = Math.round(target * 0.15);
-  const alloggio = Math.round(target * 0.40);
-  const cibo = Math.round(target * 0.30);
-  const attivita = target - (trasporto + alloggio + cibo);
+  // 1. Definiamo i costi base GIORNALIERI per persona
+  let costoAlloggioNotte, costoCiboGiorno, costoAttivitaGiorno, costoTrasportoBase;
+
+  switch (prefs.budget) {
+    case 'low':
+      costoAlloggioNotte = 35;  // Ostelli, B&B economici
+      costoCiboGiorno = 25;     // Street food, supermercati
+      costoAttivitaGiorno = 10; // Attività gratuite, pochi ingressi
+      costoTrasportoBase = giorni === 1 ? 25 : 60; // Treno regionale o bus
+      break;
+    case 'high':
+      costoAlloggioNotte = 180; // Hotel 4/5 stelle
+      costoCiboGiorno = 90;     // Ristoranti di livello
+      costoAttivitaGiorno = 60; // Tour privati, ingressi premium
+      costoTrasportoBase = giorni === 1 ? 80 : 250; // Alta velocità o volo
+      break;
+    case 'medium':
+    default:
+      costoAlloggioNotte = 75;  // B&B confortevoli, Hotel 3 stelle
+      costoCiboGiorno = 45;     // Trattorie, ristoranti standard
+      costoAttivitaGiorno = 25; // Ingressi standard
+      costoTrasportoBase = giorni === 1 ? 40 : 120; // Treno standard o volo economico
+      break;
+  }
+
+  // 2. Aggiustiamo i costi se la destinazione è cara (es. Costiera, Nord Europa)
+  // Usiamo un piccolo fattore moltiplicativo se il costoMedio nel database è alto
+  const fattoreDestinazione = (dest.costoMedio && dest.costoMedio > 120) ? 1.3 : 1.0;
+
+  // 3. Calcolo Totale PER PERSONA
+  const alloggioPP = notti * (costoAlloggioNotte * fattoreDestinazione);
+  const ciboPP = giorni * (costoCiboGiorno * fattoreDestinazione);
+  const attivitaPP = giorni * (costoAttivitaGiorno * fattoreDestinazione);
+  const trasportoPP = (costoTrasportoBase * fattoreDestinazione) + (giorni * 8); // Trasporto A/R + mezzi locali al giorno
+
+  // 4. Calcolo Totale COMPLESSIVO (Per tutti i viaggiatori)
+  const alloggio = Math.round(alloggioPP * prefs.persone);
+  const cibo = Math.round(ciboPP * prefs.persone);
+  const attivita = Math.round(attivitaPP * prefs.persone);
+  const trasporto = Math.round(trasportoPP * prefs.persone);
+
+  const target = alloggio + cibo + attivita + trasporto;
 
   return {
     id: dest.id,
     titolo: dest.nome,
     immagine: "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?q=80&w=2000&auto=format&fit=crop",
     periodoMigliore: dest.stagioneIdeale,
-    riepilogoCosti: { minimo: calcoloFinanziario.minimo, realistico: calcoloFinanziario.realistico, premium: calcoloFinanziario.premium, costoTarget: target },
+    riepilogoCosti: { minimo: target * 0.8, realistico: target, premium: target * 1.5, costoTarget: target },
     budgetBase: {
-      trasporto: { costo: trasporto, dettaglio: "Carburante, voli o trasporti standard" },
-      alloggio: { costo: alloggio, dettaglio: "Pernottamento in struttura selezionata" },
-      cibo: { costo: cibo, dettaglio: "Pasti completi e degustazioni locali" },
-      attivita: { costo: attivita, dettaglio: "Ingressi, guide e attività" }
+      trasporto: { costo: trasporto, dettaglio: "Viaggio A/R e spostamenti locali previsti" },
+      alloggio: { costo: alloggio, dettaglio: notti === 0 ? "Non necessario per escursioni in giornata" : `${notti} ${notti === 1 ? 'notte' : 'notti'} in struttura selezionata` },
+      cibo: { costo: cibo, dettaglio: "Pasti completi, spuntini e bevande" },
+      attivita: { costo: attivita, dettaglio: "Ingressi ai punti d'interesse e attività" }
     },
-    logistica: { partenza: "Aeroporto o stazione principale di riferimento", parcheggio: "Parcheggio lunga sosta o collegamento navetta consigliato" },
-    giorni: generateDays(prefs.durata), // 💥 Adattiamo i giorni alla durata scelta dall'utente!
+    logistica: { partenza: "Stazione o punto di partenza consigliato", parcheggio: "Soluzioni di parcheggio strategiche in zona" },
+    giorni: generateDays(prefs.durata), 
     mangiare: generateRestaurants(dest.tags),
-    alloggi: generateAccommodations(dest.costoMedio),
+    alloggi: notti === 0 ? [] : generateAccommodations(dest.costoMedio),
     extra: generateExtraActivities(dest.tags)
   };
 }
 
-// 💥 IL NUOVO MOTORE CHE ASCOLTA I FILTRI
+// IL NUOVO MOTORE CHE ASCOLTA I FILTRI
 export function generateCustomItinerary(prefs: TripPreferences): Trip {
   let validDestinations = destinations;
 
-  // 1. Filtriamo per tipo di viaggio se l'utente ha una preferenza
   if (prefs.tipo !== 'qualsiasi') {
     validDestinations = destinations.filter((d: any) => 
       d.tags.includes(prefs.tipo) || d.tipo.toLowerCase().includes(prefs.tipo)
     );
-    // Fallback: se non c'è nulla con quel tag, peschiamo da tutto il database per non bloccare l'app
     if (validDestinations.length === 0) validDestinations = destinations; 
   }
 
-  // 2. Scegliamo una destinazione casuale tra quelle filtrate
   const randomIndex = Math.floor(Math.random() * validDestinations.length);
   const selectedDestination = validDestinations[randomIndex];
 
   return hydrateDestinationToTrip(selectedDestination, prefs);
 }
 
-// Manteniamo la vecchia funzione per retrocompatibilità (es. generazione rapida dalla Home)
+// Retrocompatibilità
 export function getItineraryOfTheDay(): Trip {
   return generateCustomItinerary({ persone: 2, budget: 'medium', tipo: 'qualsiasi', durata: 3 });
 }
