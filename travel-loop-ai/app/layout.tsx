@@ -1,14 +1,15 @@
+// File: /app/layout.tsx
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-// IMPORTIAMO LA NOSTRA NAVBAR
 import Navbar from "./components/Navbar";
+import { AuthProvider } from "@/lib/auth"; // <-- IMPORTIAMO IL PROVIDER
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "TravelLoop AI",
-  description: "Il tuo prossimo viaggio, disegnato dall'AI.",
+  description: "Il tuo travel designer personale basato su intelligenza artificiale.",
 };
 
 export default function RootLayout({
@@ -19,14 +20,11 @@ export default function RootLayout({
   return (
     <html lang="it">
       <body className={inter.className}>
-        {/* LA NAVBAR APPARIRÀ IN ALTO IN TUTTE LE PAGINE */}
-        <Navbar />
-        {/* Aggiungiamo pt-20 (padding-top) per evitare che la navbar, 
-          essendo fissa, copra i contenuti della pagina sottostante 
-        */}
-        <div className="pt-[76px]">
+        {/* AVVOLGIAMO TUTTO CON AUTHPROVIDER */}
+        <AuthProvider>
+          <Navbar />
           {children}
-        </div>
+        </AuthProvider>
       </body>
     </html>
   );

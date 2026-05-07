@@ -2,43 +2,74 @@
 
 import { useState, useEffect } from 'react';
 import { getItineraryOfTheDay, Trip } from '@/lib/itinerary'; 
+import { generateItineraryPDF } from '@/lib/pdfGenerator'; 
+import { addFavorite, removeFavorite, isFavorite } from '@/lib/favorites';
 import { 
   Download, Wallet, Utensils, Bed, 
   CloudSun, Navigation, Minus, Plus,
   Bookmark, Share2, MapPin, Coffee, Moon,
-  Ticket // <- Ho aggiunto la nuova icona del biglietto per gli extra!
+  Ticket
 } from 'lucide-react';
 
-const HeroSection = ({ trip }: { trip: Trip }) => (
-  <div className="h-[60vh] min-h-[400px] relative bg-cover bg-center flex items-end pb-16 px-8 print:h-48" 
-       style={{ backgroundImage: `url(${trip.immagine})` }}>
-    <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-[#0f172a]/40 to-transparent print:hidden" />
-    
-    <div className="relative z-10 max-w-7xl mx-auto w-full flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-      <div className="max-w-3xl">
-        <span className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md border border-white/20 px-4 py-2 rounded-full font-semibold text-sm text-white mb-6 shadow-lg">
-          <CloudSun className="w-4 h-4 text-orange-300"/> {trip.periodoMigliore}
-        </span>
-        <h1 className="text-5xl md:text-7xl font-extrabold text-white mb-4 tracking-tight drop-shadow-2xl">
-          {trip.titolo}
-        </h1>
-      </div>
+const HeroSection = ({ trip, travelers }: { trip: Trip, travelers: number }) => {
+  const [saved, setSaved] = useState(false);
+
+  // Controlla se l'itinerario è già salvato quando la pagina carica
+  useEffect(() => {
+    setSaved(isFavorite(trip.id));
+  }, [trip.id]);
+
+  const handleToggleFavorite = () => {
+    if (saved) {
+      removeFavorite(trip.id);
+      setSaved(false);
+    } else {
+      addFavorite(trip);
+      setSaved(true);
+    }
+  };
+
+  return (
+    <div className="h-[60vh] min-h-[400px] relative bg-cover bg-center flex items-end pb-16 px-8 print:h-48" 
+         style={{ backgroundImage: `url(${trip.immagine})` }}>
+      <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-[#0f172a]/40 to-transparent print:hidden" />
       
-      <div className="flex items-center gap-3 print:hidden">
-        <button className="bg-white/10 backdrop-blur-md border border-white/20 text-white p-4 rounded-full hover:bg-white/20 hover:scale-105 transition-all shadow-xl">
-          <Bookmark className="w-5 h-5" />
-        </button>
-        <button className="bg-white/10 backdrop-blur-md border border-white/20 text-white p-4 rounded-full hover:bg-white/20 hover:scale-105 transition-all shadow-xl">
-          <Share2 className="w-5 h-5" />
-        </button>
-        <button onClick={() => window.print()} 
-                className="bg-[#ea580c] text-white px-8 py-4 rounded-full flex items-center gap-3 font-bold hover:bg-orange-500 hover:shadow-[0_0_30px_rgba(234,88,12,0.5)] transition-all shrink-0">
-          <Download className="w-5 h-5" /> Esporta PDF
-        </button>
+      <div className="relative z-10 max-w-7xl mx-auto w-full flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+        <div className="max-w-3xl">
+          <span className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md border border-white/20 px-4 py-2 rounded-full font-semibold text-sm text-white mb-6 shadow-lg">
+            <CloudSun className="w-4 h-4 text-orange-300"/> {trip.periodoMigliore}
+          </span>
+          <h1 className="text-5xl md:text-7xl font-extrabold text-white mb-4 tracking-tight drop-shadow-2xl">
+            {trip.titolo}
+          </h1>
+        </div>
+        
+        <div className="flex items-center gap-3 print:hidden">
+          {/* IL BOTTONE PREFERITI DINAMICO */}
+          <button 
+            onClick={handleToggleFavorite}
+            className={`backdrop-blur-md border p-4 rounded-full transition-all shadow-xl ${
+              saved 
+              ? 'bg-[#ea580c] border-[#ea580c] text-white hover:bg-orange-600' 
+              : 'bg-white/10 border-white/20 text-white hover:bg-white/20 hover:scale-105'
+            }`}
+          >
+            <Bookmark className={`w-5 h-5 ${saved ? 'fill-current' : ''}`} />
+          </button>
+          
+          <button className="bg-white/10 backdrop-blur-md border border-white/20 text-white p-4 rounded-full hover:bg-white/20 hover:scale-105 transition-all shadow-xl">
+            <Share2 className="w-5 h-5" />
+          </button>
+          
+          <button onClick={() => generateItineraryPDF(trip, travelers)} 
+                  className="bg-[#ea580c] text-white px-8 py-4 rounded-full flex items-center gap-3 font-bold hover:bg-orange-500 hover:shadow-[0_0_30px_rgba(234,88,12,0.5)] transition-all shrink-0">
+            <Download className="w-5 h-5" /> Esporta PDF
+          </button>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 const Sidebar = ({ trip, travelers, setTravelers }: { trip: Trip, travelers: number, setTravelers: any }) => {
   const b = trip.budgetBase;
@@ -47,7 +78,6 @@ const Sidebar = ({ trip, travelers, setTravelers }: { trip: Trip, travelers: num
 
   return (
     <div className="lg:col-span-4 space-y-8 sticky top-28 print:static">
-      
       <div className="bg-[#0f172a] text-white p-8 rounded-[2rem] shadow-2xl border border-gray-800 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl -mr-10 -mt-10" />
         <h3 className="font-bold text-xl mb-6 flex items-center gap-3 border-b border-white/10 pb-5 text-white">
@@ -171,7 +201,7 @@ export default function ItineraryPage() {
 
   return (
     <div className="min-h-screen bg-[#f8fafc] pb-24 print:bg-white print:pb-0 selection:bg-[#ea580c] selection:text-white font-sans">
-      <HeroSection trip={trip} />
+      <HeroSection trip={trip} travelers={travelers} />
 
       <main className="max-w-7xl mx-auto px-6 py-16 grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 print:block">
         <Sidebar trip={trip} travelers={travelers} setTravelers={setTravelers} />
@@ -231,7 +261,6 @@ export default function ItineraryPage() {
             </div>
           </section>
 
-          {/* ECCO LA NUOVA SEZIONE CHE LEGGE IL DATO "EXTRA" */}
           <section className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-xl shadow-gray-200/40 mt-8">
             <h3 className="font-bold text-2xl text-[#0f172a] mb-8 flex items-center gap-3">
               <span className="bg-orange-50 p-2 rounded-xl"><Ticket className="text-[#ea580c] w-6 h-6"/></span>
