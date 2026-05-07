@@ -1,8 +1,7 @@
 // File: /lib/itinerary.ts
 import { destinations } from '../data/destinations';
-import { calcolaCostiViaggio } from './calculator'; // Importiamo il motore finanziario!
+import { calcolaCostiViaggio } from './calculator'; 
 
-// --- 1. IL CONTRATTO DEI DATI AGGIORNATO ---
 export interface BudgetDetails { costo: number; dettaglio: string; }
 
 export interface Trip {
@@ -10,22 +9,8 @@ export interface Trip {
   titolo: string;
   immagine: string;
   periodoMigliore: string;
-  
-  // Aggiungiamo il blocco con i costi calcolati dall'engine finanziario
-  riepilogoCosti: {
-    minimo: number;
-    realistico: number;
-    premium: number;
-    costoTarget: number; // Quello scelto dall'utente (es. low, medium, high)
-  };
-  
-  budgetBase: {
-    trasporto: BudgetDetails;
-    alloggio: BudgetDetails;
-    cibo: BudgetDetails;
-    attivita: BudgetDetails;
-  };
-  
+  riepilogoCosti: { minimo: number; realistico: number; premium: number; costoTarget: number; };
+  budgetBase: { trasporto: BudgetDetails; alloggio: BudgetDetails; cibo: BudgetDetails; attivita: BudgetDetails; };
   logistica: { partenza: string; parcheggio: string };
   giorni: Array<{ giorno: number; mattina: string; pranzo: string; pomeriggio: string; sera: string }>;
   mangiare: Array<{ tipo: string; nome: string; piatto: string }>;
@@ -33,7 +18,6 @@ export interface Trip {
   extra: Array<{ nome: string; costo: number; descrizione: string }>;
 }
 
-// --- 2. HELPERS (Motore Logico e Generatori) ---
 function getCurrentSeason(): string {
   const month = new Date().getMonth(); 
   if (month >= 2 && month <= 4) return "Primavera";
@@ -42,78 +26,111 @@ function getCurrentSeason(): string {
   return "Inverno";
 }
 
-function generateAccommodations(destName: string, fasciaPrezzo: number) {
+function generateAccommodations(fasciaPrezzo: number) {
   const isLuxury = fasciaPrezzo > 200;
   return [
-    { nome: isLuxury ? `Grand Hotel Relais ${destName}` : `Boutique Hotel ${destName}`, tipo: isLuxury ? "Resort 5 Stelle" : "Hotel 4 Stelle", fascia: isLuxury ? "€€€€" : "€€€", pro: "Posizione centralissima e vista panoramica mozzafiato" },
-    { nome: `La Dimora di ${destName}`, tipo: "Bed & Breakfast", fascia: "€€", pro: "Accoglienza familiare e colazione con prodotti artigianali locali" }
+    { nome: isLuxury ? `Grand Hotel Relais` : `Boutique Hotel Centrale`, tipo: isLuxury ? "Resort 5 Stelle" : "Hotel 4 Stelle", fascia: isLuxury ? "€€€€" : "€€€", pro: "Posizione centralissima e vista panoramica mozzafiato" },
+    { nome: `Dimora Autentica`, tipo: "Bed & Breakfast", fascia: "€€", pro: "Accoglienza familiare e colazione con prodotti artigianali locali" }
   ];
 }
 
-function generateRestaurants(destName: string, tags: string[]) {
-  const isSea = tags.includes("natura") && destName.toLowerCase().includes("costiera");
+function generateRestaurants(tags: string[]) {
+  const isSea = tags.includes("natura");
   return [
-    { tipo: "Tradizionale", nome: `Osteria Antica ${destName}`, piatto: isSea ? "Pescato del giorno al forno" : "Specialità di carne e ricette storiche locali" },
+    { tipo: "Tradizionale", nome: `Osteria Storica Locale`, piatto: isSea ? "Pescato fresco del giorno" : "Specialità storiche a chilometro zero" },
     { tipo: "Contemporaneo", nome: `Il Bistrot del Centro`, piatto: "Menu degustazione rivisitato in chiave moderna" }
   ];
 }
 
-function generateDays(destName: string, destType: string, numDays: number) {
+function generateDays(numDays: number) {
   const days = [];
   
+  const opzioniMattina = [
+    "Visita guidata a uno dei quartieri storici meno noti, lontano dai classici percorsi turistici.",
+    "Mattinata dedicata alla natura e al relax, esplorando i parchi o le zone panoramiche limitrofe.",
+    "Immersione culturale: visita a un mercato locale e ai laboratori degli artigiani storici.",
+    "Sveglia con calma e colazione lenta. A seguire, esplorazione libera dei vicoli del centro.",
+    "Partecipazione a un'attività tradizionale o a un piccolo workshop legato alla cultura del posto."
+  ];
+  
+  const opzioniPomeriggio = [
+    "Pomeriggio libero per lo shopping, la fotografia o per perdersi senza meta precisa.",
+    "Spostamento verso un punto panoramico fuori porta per godersi la vista e scattare foto memorabili.",
+    "Visita a un'esposizione d'arte o a un museo rappresentativo del luogo.",
+    "Noleggio di biciclette o e-bike per esplorare i dintorni con i propri ritmi.",
+    "Momento di puro relax in una caffetteria storica, osservando il viavai della gente."
+  ];
+
+  const opzioniSera = [
+    "Cena in un locale rustico e serata informale ascoltando musica dal vivo.",
+    "Esperienza gastronomica particolare, provando lo street food nei mercati notturni.",
+    "Serata tranquilla: cena leggera e rientro presto per ricaricare le energie in vista di domani.",
+    "Passeggiata romantica o rilassante, ammirando l'architettura monumentale sotto le stelle.",
+    "Cena di alto livello per coccolarsi, seguita da un drink in un bar con terrazza panoramica."
+  ];
+
+  // Giorno 1
   days.push({
     giorno: 1,
-    mattina: `Arrivo a ${destName} e sistemazione. Il primo approccio è dedicato all'esplorazione per assorbire l'atmosfera di questa meta orientata a: ${destType}.`,
-    pranzo: `Sosta in un locale storico frequentato dai local per un primo assaggio autentico.`,
-    pomeriggio: `Visita guidata ai punti di interesse principali. Una passeggiata perfetta per scattare foto e orientarsi.`,
-    sera: `Cena di benvenuto, seguita da una passeggiata rilassante per vedere ${destName} illuminata.`
+    mattina: `Arrivo a destinazione e sistemazione in struttura. Il primo approccio è dedicato all'esplorazione per assorbire l'atmosfera del luogo.`,
+    pranzo: `Sosta in un locale storico frequentato dai residenti per un primo assaggio autentico.`,
+    pomeriggio: `Passeggiata orientativa nei dintorni dell'alloggio e prima visita ai punti di interesse principali.`,
+    sera: `Cena di benvenuto per celebrare l'inizio del viaggio, seguita da una passeggiata rilassante per ammirare le luci della sera.`
   });
 
+  // Giorno 2
   if (numDays >= 2) {
     days.push({
       giorno: 2,
-      mattina: `Sveglia presto. La mattinata è dedicata alle attrazioni meno turistiche e più autentiche, scoprendo l'anima vera del luogo.`,
-      pranzo: `Pranzo leggero con street food in un chiosco o mercato rionale.`,
-      pomeriggio: `Pomeriggio a disposizione per shopping artigianale o relax totale nei parchi cittadini.`,
-      sera: `Aperitivo al tramonto in un punto panoramico, seguito da una cena elegante.`
+      mattina: `Sveglia presto. La mattinata è dedicata alle attrazioni principali, scoprendo l'anima vera di questo itinerario.`,
+      pranzo: `Pranzo veloce ma tipico con specialità da passeggio.`,
+      pomeriggio: `Esplorazione di un quartiere caratteristico, ottimo per trovare scorci nascosti e scattare fotografie uniche.`,
+      sera: `Aperitivo al tramonto, seguito da una cena elegante.`
     });
   }
 
-  for (let i = 3; i <= numDays; i++) {
+  // Giorni centrali (mescolati casualmente)
+  for (let i = 3; i < numDays; i++) {
+    const index = i % opzioniMattina.length;
     days.push({
       giorno: i,
-      mattina: `Escursione o attività speciale nei dintorni di ${destName}. Un'immersione totale nella cultura locale.`,
-      pranzo: `Pranzo al sacco panoramico o sosta in un agriturismo lungo il percorso.`,
-      pomeriggio: `Rientro lento verso la base, con tempo libero per godersi l'alloggio o fare le ultime scoperte.`,
-      sera: `Ultima serata libera: scegli il tuo ritmo per concludere al meglio l'esperienza.`
+      mattina: opzioniMattina[index],
+      pranzo: `Pausa pranzo informale, lasciandosi ispirare dal momento e dai profumi locali.`,
+      pomeriggio: opzioniPomeriggio[index],
+      sera: opzioniSera[index]
     });
   }
+
+  // Ultimo Giorno
+  if (numDays > 2) {
+    days.push({
+      giorno: numDays,
+      mattina: `Ultima mattinata a disposizione per l'acquisto di souvenir o per rivedere il proprio scorcio preferito.`,
+      pranzo: `Pranzo di saluto nel locale che vi è piaciuto di più durante il viaggio.`,
+      pomeriggio: `Preparazione dei bagagli e trasferimento per il rientro, con la mente piena di ricordi.`,
+      sera: `Fine dei servizi e rientro.`
+    });
+  }
+
   return days;
 }
 
 function generateExtraActivities(tags: string[]) {
   const extras = [];
   if (tags.includes("relax") || tags.includes("lusso")) extras.push({ nome: "Percorso SPA di coppia", costo: 80, descrizione: "Accesso esclusivo di 2 ore all'area benessere con massaggio." });
-  if (tags.includes("città") || tags.includes("cultura")) extras.push({ nome: "City Pass Musei", costo: 35, descrizione: "Accesso salta-fila alle 3 esposizioni principali." });
+  if (tags.includes("città") || tags.includes("cultura")) extras.push({ nome: "City Pass Musei", costo: 35, descrizione: "Accesso salta-fila alle esposizioni principali." });
   if (tags.includes("natura")) extras.push({ nome: "Noleggio E-Bike", costo: 40, descrizione: "Bicicletta a pedalata assistita con mappa percorsi." });
   if (extras.length === 0) extras.push({ nome: "Tour Enogastronomico a piedi", costo: 55, descrizione: "Guida locale per 3 ore con degustazioni." });
   return extras;
 }
 
-// --- 3. ASSEMBLATORE E INTEGRAZIONE COSTI (Hydration) ---
-function hydrateDestinationToTrip(
-  dest: any, 
-  numeroPersone: number, 
-  budgetUtente: 'low' | 'medium' | 'high'
-): Trip {
-  
+function hydrateDestinationToTrip(dest: any, numeroPersone: number, budgetUtente: 'low' | 'medium' | 'high'): Trip {
   let numDays = 2;
   if (dest.categoria.includes("giornata")) numDays = 1;
   if (dest.categoria.includes("1 settimana")) numDays = 7;
   if (dest.categoria.includes("2 settimane")) numDays = 14;
 
-  // 💥 INTEGRAZIONE: Chiamata al Cost Engine!
-  const meseAttuale = new Date().getMonth() + 1; // +1 perché JavaScript parte da 0
+  const meseAttuale = new Date().getMonth() + 1; 
   const calcoloFinanziario = calcolaCostiViaggio({
     costoMedioDestinazione: dest.costoMedio,
     durata: numDays,
@@ -123,7 +140,6 @@ function hydrateDestinationToTrip(
     budgetUtente: budgetUtente
   });
 
-  // Distribuzione proporzionale del costo generato dall'algoritmo
   const target = calcoloFinanziario.costoTarget;
   const trasporto = Math.round(target * 0.15);
   const alloggio = Math.round(target * 0.40);
@@ -135,38 +151,30 @@ function hydrateDestinationToTrip(
     titolo: dest.nome,
     immagine: "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?q=80&w=2000&auto=format&fit=crop",
     periodoMigliore: dest.stagioneIdeale,
-    
-    // Ritorno dei costi del Cost Engine
     riepilogoCosti: {
       minimo: calcoloFinanziario.minimo,
       realistico: calcoloFinanziario.realistico,
       premium: calcoloFinanziario.premium,
       costoTarget: calcoloFinanziario.costoTarget
     },
-    
     budgetBase: {
-      trasporto: { costo: trasporto, dettaglio: "Carburante, pedaggi o trasporti standard" },
+      trasporto: { costo: trasporto, dettaglio: "Carburante, voli o trasporti standard" },
       alloggio: { costo: alloggio, dettaglio: "Pernottamento in struttura selezionata" },
       cibo: { costo: cibo, dettaglio: "Pasti completi e degustazioni locali" },
       attivita: { costo: attivita, dettaglio: "Ingressi, guide e attività" }
     },
     logistica: {
-      partenza: "Crema (o area sosta / casello limitrofo)",
-      parcheggio: "Consigliato parcheggio convenzionato o zone a sosta prolungata"
+      partenza: "Aeroporto o stazione principale di riferimento",
+      parcheggio: "Parcheggio lunga sosta o collegamento navetta consigliato"
     },
-    giorni: generateDays(dest.nome, dest.tipo, numDays),
-    mangiare: generateRestaurants(dest.nome, dest.tags),
-    alloggi: generateAccommodations(dest.nome, dest.costoMedio),
+    giorni: generateDays(numDays),
+    mangiare: generateRestaurants(dest.tags),
+    alloggi: generateAccommodations(dest.costoMedio),
     extra: generateExtraActivities(dest.tags)
   };
 }
 
-// --- 4. FUNZIONE PRINCIPALE: Il Cervello dell'App ---
-// Ora accetta il numero di persone e il tipo di budget direttamente dalla pagina visiva!
-export function getItineraryOfTheDay(
-  numeroPersone: number = 2, 
-  budgetUtente: 'low' | 'medium' | 'high' = 'medium'
-): Trip {
+export function getItineraryOfTheDay(numeroPersone: number = 2, budgetUtente: 'low' | 'medium' | 'high' = 'medium'): Trip {
   const currentSeason = getCurrentSeason();
 
   let validDestinations = destinations.filter((d: any) => 
