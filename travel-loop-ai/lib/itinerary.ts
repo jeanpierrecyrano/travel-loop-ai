@@ -18,6 +18,14 @@ export interface Trip {
   extra: Array<{ nome: string; costo: number; descrizione: string }>;
 }
 
+// 💥 NUOVO: Definiamo l'interfaccia delle preferenze utente
+export interface TripPreferences {
+  persone: number;
+  budget: 'low' | 'medium' | 'high';
+  tipo: string; // 'qualsiasi', 'relax', 'cultura', 'avventura', 'natura'
+  durata: number; // numero di giorni esatti
+}
+
 function getCurrentSeason(): string {
   const month = new Date().getMonth(); 
   if (month >= 2 && month <= 4) return "Primavera";
@@ -69,7 +77,6 @@ function generateDays(numDays: number) {
     "Cena di alto livello per coccolarsi, seguita da un drink in un bar con terrazza panoramica."
   ];
 
-  // Giorno 1
   days.push({
     giorno: 1,
     mattina: `Arrivo a destinazione e sistemazione in struttura. Il primo approccio è dedicato all'esplorazione per assorbire l'atmosfera del luogo.`,
@@ -78,7 +85,6 @@ function generateDays(numDays: number) {
     sera: `Cena di benvenuto per celebrare l'inizio del viaggio, seguita da una passeggiata rilassante per ammirare le luci della sera.`
   });
 
-  // Giorno 2
   if (numDays >= 2) {
     days.push({
       giorno: 2,
@@ -89,7 +95,6 @@ function generateDays(numDays: number) {
     });
   }
 
-  // Giorni centrali (mescolati casualmente)
   for (let i = 3; i < numDays; i++) {
     const index = i % opzioniMattina.length;
     days.push({
@@ -101,7 +106,6 @@ function generateDays(numDays: number) {
     });
   }
 
-  // Ultimo Giorno
   if (numDays > 2) {
     days.push({
       giorno: numDays,
@@ -124,20 +128,15 @@ function generateExtraActivities(tags: string[]) {
   return extras;
 }
 
-function hydrateDestinationToTrip(dest: any, numeroPersone: number, budgetUtente: 'low' | 'medium' | 'high'): Trip {
-  let numDays = 2;
-  if (dest.categoria.includes("giornata")) numDays = 1;
-  if (dest.categoria.includes("1 settimana")) numDays = 7;
-  if (dest.categoria.includes("2 settimane")) numDays = 14;
-
+function hydrateDestinationToTrip(dest: any, prefs: TripPreferences): Trip {
   const meseAttuale = new Date().getMonth() + 1; 
   const calcoloFinanziario = calcolaCostiViaggio({
     costoMedioDestinazione: dest.costoMedio,
-    durata: numDays,
+    durata: prefs.durata,
     mese: meseAttuale,
-    numeroPersone: numeroPersone,
+    numeroPersone: prefs.persone,
     tipoViaggio: dest.tipo,
-    budgetUtente: budgetUtente
+    budgetUtente: prefs.budget
   });
 
   const target = calcoloFinanziario.costoTarget;
@@ -151,59 +150,42 @@ function hydrateDestinationToTrip(dest: any, numeroPersone: number, budgetUtente
     titolo: dest.nome,
     immagine: "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?q=80&w=2000&auto=format&fit=crop",
     periodoMigliore: dest.stagioneIdeale,
-    riepilogoCosti: {
-      minimo: calcoloFinanziario.minimo,
-      realistico: calcoloFinanziario.realistico,
-      premium: calcoloFinanziario.premium,
-      costoTarget: calcoloFinanziario.costoTarget
-    },
+    riepilogoCosti: { minimo: calcoloFinanziario.minimo, realistico: calcoloFinanziario.realistico, premium: calcoloFinanziario.premium, costoTarget: target },
     budgetBase: {
       trasporto: { costo: trasporto, dettaglio: "Carburante, voli o trasporti standard" },
       alloggio: { costo: alloggio, dettaglio: "Pernottamento in struttura selezionata" },
       cibo: { costo: cibo, dettaglio: "Pasti completi e degustazioni locali" },
       attivita: { costo: attivita, dettaglio: "Ingressi, guide e attività" }
     },
-    logistica: {
-      partenza: "Aeroporto o stazione principale di riferimento",
-      parcheggio: "Parcheggio lunga sosta o collegamento navetta consigliato"
-    },
-    giorni: generateDays(numDays),
+    logistica: { partenza: "Aeroporto o stazione principale di riferimento", parcheggio: "Parcheggio lunga sosta o collegamento navetta consigliato" },
+    giorni: generateDays(prefs.durata), // 💥 Adattiamo i giorni alla durata scelta dall'utente!
     mangiare: generateRestaurants(dest.tags),
     alloggi: generateAccommodations(dest.costoMedio),
     extra: generateExtraActivities(dest.tags)
   };
 }
 
-export function getItineraryOfTheDay(numeroPersone: number = 2, budgetUtente: 'low' | 'medium' | 'high' = 'medium'): Trip {
-  const currentSeason = getCurrentSeason();
+// 💥 IL NUOVO MOTORE CHE ASCOLTA I FILTRI
+export function generateCustomItinerary(prefs: TripPreferences): Trip {
+  let validDestinations = destinations;
 
-  let validDestinations = destinations.filter((d: any) => 
-    d.stagioneIdeale.includes(currentSeason) || d.stagioneIdeale.includes("Tutto l'anno")
-  );
-  if (validDestinations.length === 0) validDestinations = destinations;
-
-  let history: string[] = [];
-  if (typeof window !== 'undefined') {
-    const stored = localStorage.getItem('travelLoop_history');
-    if (stored) history = JSON.parse(stored);
+  // 1. Filtriamo per tipo di viaggio se l'utente ha una preferenza
+  if (prefs.tipo !== 'qualsiasi') {
+    validDestinations = destinations.filter((d: any) => 
+      d.tags.includes(prefs.tipo) || d.tipo.toLowerCase().includes(prefs.tipo)
+    );
+    // Fallback: se non c'è nulla con quel tag, peschiamo da tutto il database per non bloccare l'app
+    if (validDestinations.length === 0) validDestinations = destinations; 
   }
 
-  let available = validDestinations.filter((d: any) => !history.includes(d.id));
+  // 2. Scegliamo una destinazione casuale tra quelle filtrate
+  const randomIndex = Math.floor(Math.random() * validDestinations.length);
+  const selectedDestination = validDestinations[randomIndex];
 
-  if (available.length === 0) {
-    history = history.slice(-1);
-    available = validDestinations.filter((d: any) => !history.includes(d.id));
-    if (available.length === 0) available = validDestinations; 
-  }
+  return hydrateDestinationToTrip(selectedDestination, prefs);
+}
 
-  const randomIndex = Math.floor(Math.random() * available.length);
-  const selectedDestination = available[randomIndex];
-
-  if (typeof window !== 'undefined') {
-    history.push(selectedDestination.id);
-    if (history.length > 5) history.shift();
-    localStorage.setItem('travelLoop_history', JSON.stringify(history));
-  }
-
-  return hydrateDestinationToTrip(selectedDestination, numeroPersone, budgetUtente);
+// Manteniamo la vecchia funzione per retrocompatibilità (es. generazione rapida dalla Home)
+export function getItineraryOfTheDay(): Trip {
+  return generateCustomItinerary({ persone: 2, budget: 'medium', tipo: 'qualsiasi', durata: 3 });
 }

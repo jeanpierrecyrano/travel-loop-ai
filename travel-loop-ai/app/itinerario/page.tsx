@@ -1,68 +1,123 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { getItineraryOfTheDay, Trip } from '@/lib/itinerary'; 
+import { generateCustomItinerary, Trip, TripPreferences } from '@/lib/itinerary'; 
 import { generateItineraryPDF } from '@/lib/pdfGenerator'; 
 import { addFavorite, removeFavorite, isFavorite } from '@/lib/favorites';
+import { useAuth } from '@/lib/auth'; // <-- Il cervello degli utenti!
 import { 
   Download, Wallet, Utensils, Bed, 
   CloudSun, Navigation, Minus, Plus,
   Bookmark, Share2, MapPin, Coffee, Moon,
-  Ticket
+  Ticket, Settings2, Users
 } from 'lucide-react';
 
+// --- PANNELLO FILTRI ---
+const ControlPanel = ({ prefs, setPrefs, onGenerate }: { prefs: TripPreferences, setPrefs: any, onGenerate: () => void }) => {
+  return (
+    <div className="bg-white border-b border-gray-200 sticky top-20 z-40 print:hidden shadow-sm">
+      <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row items-center gap-6 justify-between">
+        
+        <div className="flex items-center gap-2 text-[#0f172a] font-bold">
+          <Settings2 className="text-[#ea580c] w-5 h-5" /> Personalizza Viaggio
+        </div>
+
+        <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
+          
+          <div className="flex items-center gap-2 bg-gray-50 p-1.5 rounded-xl border border-gray-100">
+            <Users className="w-4 h-4 text-gray-400 ml-2" />
+            <button onClick={() => setPrefs({...prefs, persone: Math.max(1, prefs.persone - 1)})} className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm hover:bg-gray-100 text-gray-600 font-bold">-</button>
+            <span className="text-sm font-bold w-4 text-center text-[#0f172a]">{prefs.persone}</span>
+            <button onClick={() => setPrefs({...prefs, persone: prefs.persone + 1})} className="w-8 h-8 rounded-lg bg-[#0f172a] text-white flex items-center justify-center shadow-sm hover:bg-gray-800 font-bold">+</button>
+          </div>
+
+          <select 
+            value={prefs.durata} 
+            onChange={(e) => setPrefs({...prefs, durata: Number(e.target.value)})}
+            className="bg-gray-50 border border-gray-200 text-[#0f172a] text-sm rounded-xl focus:ring-[#ea580c] focus:border-[#ea580c] block p-3 font-semibold outline-none"
+          >
+            <option value={1}>In Giornata (1gg)</option>
+            <option value={3}>Weekend (3gg)</option>
+            <option value={7}>Settimana (7gg)</option>
+            <option value={14}>Lungo (14gg)</option>
+          </select>
+
+          <select 
+            value={prefs.tipo} 
+            onChange={(e) => setPrefs({...prefs, tipo: e.target.value})}
+            className="bg-gray-50 border border-gray-200 text-[#0f172a] text-sm rounded-xl focus:ring-[#ea580c] focus:border-[#ea580c] block p-3 font-semibold outline-none"
+          >
+            <option value="qualsiasi">Qualsiasi meta</option>
+            <option value="relax">Relax & Benessere</option>
+            <option value="cultura">Arte & Cultura</option>
+            <option value="avventura">Avventura & Sport</option>
+            <option value="natura">Mare & Natura</option>
+          </select>
+
+          <select 
+            value={prefs.budget} 
+            onChange={(e) => setPrefs({...prefs, budget: e.target.value as 'low' | 'medium' | 'high'})}
+            className="bg-gray-50 border border-gray-200 text-[#0f172a] text-sm rounded-xl focus:ring-[#ea580c] focus:border-[#ea580c] block p-3 font-semibold outline-none"
+          >
+            <option value="low">Budget Low Cost</option>
+            <option value="medium">Budget Equilibrato</option>
+            <option value="high">Budget Lusso</option>
+          </select>
+
+          <button onClick={onGenerate} className="bg-[#ea580c] text-white px-6 py-3 rounded-xl font-bold hover:bg-orange-600 transition-all shadow-md ml-auto md:ml-0">
+            Rigenera
+          </button>
+
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- HERO SECTION (CON INTEGRAZIONE UTENTI) ---
 const HeroSection = ({ trip, travelers }: { trip: Trip, travelers: number }) => {
   const [saved, setSaved] = useState(false);
+  const { user } = useAuth(); // Prendiamo l'utente loggato!
 
-  // Controlla se l'itinerario è già salvato quando la pagina carica
   useEffect(() => {
+    // Ricarichiamo lo stato del preferito se cambia l'utente o il viaggio
     setSaved(isFavorite(trip.id));
-  }, [trip.id]);
+  }, [trip.id, user]);
 
   const handleToggleFavorite = () => {
-    if (saved) {
-      removeFavorite(trip.id);
-      setSaved(false);
-    } else {
-      addFavorite(trip);
-      setSaved(true);
+    if (!user) {
+      alert("Accedi o Registrati per salvare gli itinerari nei tuoi Preferiti!");
+      return;
+    }
+    
+    if (saved) { 
+      removeFavorite(trip.id); 
+      setSaved(false); 
+    } else { 
+      addFavorite(trip); 
+      setSaved(true); 
     }
   };
 
   return (
-    <div className="h-[60vh] min-h-[400px] relative bg-cover bg-center flex items-end pb-16 px-8 print:h-48" 
-         style={{ backgroundImage: `url(${trip.immagine})` }}>
+    <div className="h-[60vh] min-h-[400px] relative bg-cover bg-center flex items-end pb-16 px-8 print:h-48" style={{ backgroundImage: `url(${trip.immagine})` }}>
       <div className="absolute inset-0 bg-gradient-to-t from-[#0f172a] via-[#0f172a]/40 to-transparent print:hidden" />
-      
       <div className="relative z-10 max-w-7xl mx-auto w-full flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div className="max-w-3xl">
           <span className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md border border-white/20 px-4 py-2 rounded-full font-semibold text-sm text-white mb-6 shadow-lg">
             <CloudSun className="w-4 h-4 text-orange-300"/> {trip.periodoMigliore}
           </span>
-          <h1 className="text-5xl md:text-7xl font-extrabold text-white mb-4 tracking-tight drop-shadow-2xl">
-            {trip.titolo}
-          </h1>
+          <h1 className="text-5xl md:text-7xl font-extrabold text-white mb-4 tracking-tight drop-shadow-2xl">{trip.titolo}</h1>
         </div>
         
         <div className="flex items-center gap-3 print:hidden">
-          {/* IL BOTTONE PREFERITI DINAMICO */}
-          <button 
-            onClick={handleToggleFavorite}
-            className={`backdrop-blur-md border p-4 rounded-full transition-all shadow-xl ${
-              saved 
-              ? 'bg-[#ea580c] border-[#ea580c] text-white hover:bg-orange-600' 
-              : 'bg-white/10 border-white/20 text-white hover:bg-white/20 hover:scale-105'
-            }`}
-          >
+          <button onClick={handleToggleFavorite} className={`backdrop-blur-md border p-4 rounded-full transition-all shadow-xl ${saved ? 'bg-[#ea580c] border-[#ea580c] text-white hover:bg-orange-600' : 'bg-white/10 border-white/20 text-white hover:bg-white/20 hover:scale-105'}`}>
             <Bookmark className={`w-5 h-5 ${saved ? 'fill-current' : ''}`} />
           </button>
-          
           <button className="bg-white/10 backdrop-blur-md border border-white/20 text-white p-4 rounded-full hover:bg-white/20 hover:scale-105 transition-all shadow-xl">
             <Share2 className="w-5 h-5" />
           </button>
-          
-          <button onClick={() => generateItineraryPDF(trip, travelers)} 
-                  className="bg-[#ea580c] text-white px-8 py-4 rounded-full flex items-center gap-3 font-bold hover:bg-orange-500 hover:shadow-[0_0_30px_rgba(234,88,12,0.5)] transition-all shrink-0">
+          <button onClick={() => generateItineraryPDF(trip, travelers)} className="bg-[#ea580c] text-white px-8 py-4 rounded-full flex items-center gap-3 font-bold hover:bg-orange-500 hover:shadow-[0_0_30px_rgba(234,88,12,0.5)] transition-all shrink-0">
             <Download className="w-5 h-5" /> Esporta PDF
           </button>
         </div>
@@ -71,50 +126,35 @@ const HeroSection = ({ trip, travelers }: { trip: Trip, travelers: number }) => 
   );
 };
 
-const Sidebar = ({ trip, travelers, setTravelers }: { trip: Trip, travelers: number, setTravelers: any }) => {
+// --- SIDEBAR (BUDGET E LOGISTICA) ---
+const Sidebar = ({ trip, travelers }: { trip: Trip, travelers: number }) => {
   const b = trip.budgetBase;
-  const calcola = (val: number) => val * travelers;
-  const totale = calcola(b.trasporto.costo + b.cibo.costo + b.attivita.costo) + b.alloggio.costo;
+  const totale = b.trasporto.costo + b.cibo.costo + b.attivita.costo + b.alloggio.costo;
 
   return (
-    <div className="lg:col-span-4 space-y-8 sticky top-28 print:static">
+    <div className="lg:col-span-4 space-y-8 sticky top-48 print:static">
       <div className="bg-[#0f172a] text-white p-8 rounded-[2rem] shadow-2xl border border-gray-800 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl -mr-10 -mt-10" />
         <h3 className="font-bold text-xl mb-6 flex items-center gap-3 border-b border-white/10 pb-5 text-white">
-          <span className="bg-[#ea580c] p-2 rounded-xl"><Navigation className="w-5 h-5 text-white" /></span>
-          Logistica
+          <span className="bg-[#ea580c] p-2 rounded-xl"><Navigation className="w-5 h-5 text-white" /></span> Logistica
         </h3>
         <div className="space-y-6 text-sm">
-          <div>
-            <p className="text-gray-400 text-[11px] font-bold uppercase tracking-widest mb-2 flex items-center gap-2"><MapPin className="w-3 h-3"/> Partenza</p>
-            <p className="text-gray-100 font-medium text-base">{trip.logistica.partenza}</p>
-          </div>
-          <div>
-            <p className="text-gray-400 text-[11px] font-bold uppercase tracking-widest mb-2">Parcheggio</p>
-            <p className="text-gray-100 font-medium text-base">{trip.logistica.parcheggio}</p>
-          </div>
+          <div><p className="text-gray-400 text-[11px] font-bold uppercase tracking-widest mb-2 flex items-center gap-2"><MapPin className="w-3 h-3"/> Partenza</p><p className="text-gray-100 font-medium text-base">{trip.logistica.partenza}</p></div>
+          <div><p className="text-gray-400 text-[11px] font-bold uppercase tracking-widest mb-2">Parcheggio</p><p className="text-gray-100 font-medium text-base">{trip.logistica.parcheggio}</p></div>
         </div>
       </div>
 
       <div className="bg-white p-8 rounded-[2rem] shadow-xl shadow-gray-200/50 border border-gray-100">
-        <div className="flex justify-between items-center mb-8">
-          <h3 className="font-bold text-xl flex items-center gap-3 text-[#0f172a]">
-            <span className="bg-orange-50 p-2 rounded-xl"><Wallet className="text-[#ea580c] w-5 h-5"/></span>
-            Budget
-          </h3>
-          <div className="flex items-center gap-3 bg-gray-50 p-1.5 rounded-full border border-gray-100 print:hidden">
-            <button onClick={() => setTravelers(Math.max(1, travelers - 1))} className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm hover:bg-gray-100 transition-colors"><Minus size={14} className="text-gray-600"/></button>
-            <span className="text-sm font-bold w-6 text-center text-[#0f172a]">{travelers}</span>
-            <button onClick={() => setTravelers(travelers + 1)} className="w-8 h-8 rounded-full bg-[#0f172a] text-white flex items-center justify-center shadow-sm hover:bg-gray-800 transition-colors"><Plus size={14}/></button>
-          </div>
-        </div>
+        <h3 className="font-bold text-xl mb-8 flex items-center gap-3 text-[#0f172a]">
+          <span className="bg-orange-50 p-2 rounded-xl"><Wallet className="text-[#ea580c] w-5 h-5"/></span> Budget
+        </h3>
         
         <div className="space-y-5 border-b border-gray-100 pb-8 mb-8">
           {[
-            { label: 'Trasporto', val: calcola(b.trasporto.costo), desc: b.trasporto.dettaglio },
+            { label: 'Trasporto', val: b.trasporto.costo, desc: b.trasporto.dettaglio },
             { label: 'Alloggio', val: b.alloggio.costo, desc: b.alloggio.dettaglio },
-            { label: 'Cibo', val: calcola(b.cibo.costo), desc: b.cibo.dettaglio },
-            { label: 'Attività', val: calcola(b.attivita.costo), desc: b.attivita.dettaglio },
+            { label: 'Cibo', val: b.cibo.costo, desc: b.cibo.dettaglio },
+            { label: 'Attività', val: b.attivita.costo, desc: b.attivita.dettaglio },
           ].map((item, i) => (
              <div key={i} className="flex flex-col group">
               <div className="flex justify-between items-end font-bold text-sm mb-1">
@@ -138,98 +178,73 @@ const Sidebar = ({ trip, travelers, setTravelers }: { trip: Trip, travelers: num
   );
 };
 
-interface ItineraryDayProps {
-  giorno: number;
-  mattina: string;
-  pranzo: string;
-  pomeriggio: string;
-  sera: string;
-}
-
-const ItineraryDay = ({ giorno, mattina, pranzo, pomeriggio, sera }: ItineraryDayProps) => (
+// --- COMPONENTE GIORNATA ---
+const ItineraryDay = ({ giorno, mattina, pranzo, pomeriggio, sera }: any) => (
   <div className="relative pl-12 md:pl-16 border-l-[3px] border-orange-100 pb-16 last:pb-0">
-    <div className="absolute w-12 h-12 bg-gradient-to-br from-[#ea580c] to-orange-400 rounded-full -left-[25.5px] top-0 flex items-center justify-center text-white font-black text-lg shadow-[0_0_20px_rgba(234,88,12,0.3)] ring-4 ring-white">
-      {giorno}
-    </div>
-    
+    <div className="absolute w-12 h-12 bg-gradient-to-br from-[#ea580c] to-orange-400 rounded-full -left-[25.5px] top-0 flex items-center justify-center text-white font-black text-lg shadow-[0_0_20px_rgba(234,88,12,0.3)] ring-4 ring-white">{giorno}</div>
     <div className="bg-white p-8 rounded-[2rem] shadow-xl shadow-gray-200/40 border border-gray-100 space-y-8 transition-transform hover:-translate-y-1 duration-300">
-      <div>
-        <p className="flex items-center gap-2 text-gray-400 text-[11px] font-bold uppercase tracking-widest mb-3">
-          <Coffee className="w-4 h-4 text-gray-400" /> Mattina
-        </p>
-        <p className="text-[#0f172a] text-lg font-medium leading-relaxed">{mattina}</p>
-      </div>
-
-      <div className="bg-orange-50 p-6 rounded-2xl border border-orange-100/50">
-        <p className="flex items-center gap-2 text-[#ea580c] text-[11px] font-bold uppercase tracking-widest mb-2">
-          <Utensils className="w-4 h-4" /> Sosta Pranzo
-        </p>
-        <p className="text-[#0f172a] font-medium">{pranzo}</p>
-      </div>
-
-      <div>
-        <p className="flex items-center gap-2 text-gray-400 text-[11px] font-bold uppercase tracking-widest mb-3">
-          <MapPin className="w-4 h-4 text-gray-400" /> Pomeriggio
-        </p>
-        <p className="text-[#0f172a] text-lg font-medium leading-relaxed">{pomeriggio}</p>
-      </div>
-
-      <div className="bg-gradient-to-br from-[#0f172a] to-gray-800 p-6 rounded-2xl text-white shadow-lg">
-        <p className="flex items-center gap-2 text-orange-400 text-[11px] font-bold uppercase tracking-widest mb-2">
-          <Moon className="w-4 h-4" /> L'Anima del luogo (Sera)
-        </p>
-        <p className="font-medium leading-relaxed">{sera}</p>
-      </div>
+      <div><p className="flex items-center gap-2 text-gray-400 text-[11px] font-bold uppercase tracking-widest mb-3"><Coffee className="w-4 h-4 text-gray-400" /> Mattina</p><p className="text-[#0f172a] text-lg font-medium leading-relaxed">{mattina}</p></div>
+      <div className="bg-orange-50 p-6 rounded-2xl border border-orange-100/50"><p className="flex items-center gap-2 text-[#ea580c] text-[11px] font-bold uppercase tracking-widest mb-2"><Utensils className="w-4 h-4" /> Sosta Pranzo</p><p className="text-[#0f172a] font-medium">{pranzo}</p></div>
+      <div><p className="flex items-center gap-2 text-gray-400 text-[11px] font-bold uppercase tracking-widest mb-3"><MapPin className="w-4 h-4 text-gray-400" /> Pomeriggio</p><p className="text-[#0f172a] text-lg font-medium leading-relaxed">{pomeriggio}</p></div>
+      <div className="bg-gradient-to-br from-[#0f172a] to-gray-800 p-6 rounded-2xl text-white shadow-lg"><p className="flex items-center gap-2 text-orange-400 text-[11px] font-bold uppercase tracking-widest mb-2"><Moon className="w-4 h-4" /> L'Anima del luogo (Sera)</p><p className="font-medium leading-relaxed">{sera}</p></div>
     </div>
   </div>
 );
 
+// --- PAGINA PRINCIPALE ---
 export default function ItineraryPage() {
   const [trip, setTrip] = useState<Trip | null>(null);
-  const [travelers, setTravelers] = useState(2);
+  
+  const [prefs, setPrefs] = useState<TripPreferences>({
+    persone: 2,
+    budget: 'medium',
+    tipo: 'qualsiasi',
+    durata: 3
+  });
 
   useEffect(() => {
-    setTrip(getItineraryOfTheDay());
-  }, []);
+    setTrip(generateCustomItinerary(prefs));
+  }, []); 
+
+  const handleRegenerate = () => {
+    setTrip(null); 
+    setTimeout(() => {
+      setTrip(generateCustomItinerary(prefs));
+    }, 400); 
+  };
 
   if (!trip) return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-[#f8fafc]">
       <div className="w-12 h-12 border-4 border-orange-200 border-t-[#ea580c] rounded-full animate-spin" />
-      <span className="font-bold text-gray-500 uppercase tracking-widest text-sm">Creazione Loop in corso...</span>
+      <span className="font-bold text-gray-500 uppercase tracking-widest text-sm">Ricerca destinazioni perfette...</span>
     </div>
   );
 
   return (
     <div className="min-h-screen bg-[#f8fafc] pb-24 print:bg-white print:pb-0 selection:bg-[#ea580c] selection:text-white font-sans">
-      <HeroSection trip={trip} travelers={travelers} />
+      
+      {/* Barra Filtri */}
+      <ControlPanel prefs={prefs} setPrefs={setPrefs} onGenerate={handleRegenerate} />
+
+      {/* Sezione Top */}
+      <HeroSection trip={trip} travelers={prefs.persone} />
 
       <main className="max-w-7xl mx-auto px-6 py-16 grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 print:block">
-        <Sidebar trip={trip} travelers={travelers} setTravelers={setTravelers} />
+        <Sidebar trip={trip} travelers={prefs.persone} />
 
         <div className="lg:col-span-8 space-y-12">
-          
           <section>
             <h2 className="text-4xl font-extrabold text-[#0f172a] mb-12 tracking-tight">Il Tuo Programma</h2>
             <div className="mt-8 pt-4">
               {trip.giorni.map((g, idx) => (
-                <ItineraryDay 
-                  key={idx}
-                  giorno={g.giorno}
-                  mattina={g.mattina}
-                  pranzo={g.pranzo}
-                  pomeriggio={g.pomeriggio}
-                  sera={g.sera}
-                />
+                <ItineraryDay key={idx} {...g} />
               ))}
             </div>
           </section>
 
           <section className="grid md:grid-cols-2 gap-8">
             <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-xl shadow-gray-200/40">
-              <h3 className="font-bold text-2xl text-[#0f172a] mb-8 flex items-center gap-3">
-                <span className="bg-orange-50 p-2 rounded-xl"><Utensils className="text-[#ea580c] w-6 h-6"/></span>
-                Gastronomia
-              </h3>
+              <h3 className="font-bold text-2xl text-[#0f172a] mb-8 flex items-center gap-3"><span className="bg-orange-50 p-2 rounded-xl"><Utensils className="text-[#ea580c] w-6 h-6"/></span> Gastronomia</h3>
               <div className="space-y-6">
                 {trip.mangiare.map((m, i) => (
                   <div key={i} className="group border-l-[3px] border-orange-100 pl-5 py-1 hover:border-[#ea580c] transition-colors">
@@ -242,10 +257,7 @@ export default function ItineraryPage() {
             </div>
             
             <div className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-xl shadow-gray-200/40">
-              <h3 className="font-bold text-2xl text-[#0f172a] mb-8 flex items-center gap-3">
-                <span className="bg-orange-50 p-2 rounded-xl"><Bed className="text-[#ea580c] w-6 h-6"/></span>
-                Dove Dormire
-              </h3>
+              <h3 className="font-bold text-2xl text-[#0f172a] mb-8 flex items-center gap-3"><span className="bg-orange-50 p-2 rounded-xl"><Bed className="text-[#ea580c] w-6 h-6"/></span> Dove Dormire</h3>
               <div className="space-y-6">
                 {trip.alloggi.map((h, i) => (
                   <div key={i} className="group border-l-[3px] border-orange-100 pl-5 py-1 hover:border-[#ea580c] transition-colors">
@@ -262,10 +274,7 @@ export default function ItineraryPage() {
           </section>
 
           <section className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-xl shadow-gray-200/40 mt-8">
-            <h3 className="font-bold text-2xl text-[#0f172a] mb-8 flex items-center gap-3">
-              <span className="bg-orange-50 p-2 rounded-xl"><Ticket className="text-[#ea580c] w-6 h-6"/></span>
-              Esperienze Extra Suggerite
-            </h3>
+            <h3 className="font-bold text-2xl text-[#0f172a] mb-8 flex items-center gap-3"><span className="bg-orange-50 p-2 rounded-xl"><Ticket className="text-[#ea580c] w-6 h-6"/></span> Esperienze Extra Suggerite</h3>
             <div className="grid md:grid-cols-2 gap-6">
               {trip.extra.map((ext, i) => (
                 <div key={i} className="p-6 rounded-2xl border border-gray-100 bg-gray-50/50 hover:border-[#ea580c] hover:bg-white transition-all group">
@@ -278,7 +287,6 @@ export default function ItineraryPage() {
               ))}
             </div>
           </section>
-
         </div>
       </main>
     </div>
